@@ -1,0 +1,180 @@
+# Some generic tasks and dependencies
+- hosts: all
+  roles:
+    - ansible-hardening
+
+# Some generic tasks and dependencies
+- hosts: all
+  tasks:
+    - name: install acl to assist with unix file permissions
+      apt:
+        name: acl
+        state: present
+
+    - name: Add the user 'ubuntu' with a bash shell.
+      user:
+        name: ubuntu
+        shell: /bin/bash
+        groups: sudo
+        append: true
+        password: "{{ 'ubuntu' | password_hash('sha512', 'idontlikesalt') }}"
+
+    - name: sudo no password needed
+      copy:
+        content: "ubuntu ALL=(ALL) NOPASSWD: ALL"
+        dest: /etc/sudoers.d/ubuntu
+        mode: 0600
+
+    - name: symlink /etc/resolv
+      file:
+        state: link
+        dest: /etc/resolv.conf
+        src: /run/systemd/resolve/resolv.conf
+        force: true
+
+    - name: dist-upgrade
+      apt:
+        upgrade: dist
+
+    - name: install required packages
+      apt:
+        pkg:
+          - python
+          - jq
+          - unzip
+          - libpam-ssh
+          - python-apt
+          - python3-pip
+          - python3-setuptools
+          - python-pip-whl
+          - python-setuptools
+          - open-vm-tools
+          - freetds-bin
+          - freetds-dev
+          - tdsodbc
+          - libaio1
+          - unixodbc
+          - bc
+
+    - name: copy iptables file
+      copy:
+        src: iptables-zbx_proxy
+        dest: /etc/rc.local
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: Disallow root SSH access (Explicitly enabled in preseed)
+      lineinfile:
+        dest: /etc/ssh/sshd_config
+        regexp: "^PermitRootLogin"
+        line: "PermitRootLogin no"
+        state: present
+
+    - name: "Fix where dbus is not started during vmware customization"
+      lineinfile:
+        path: /lib/systemd/system/open-vm-tools.service
+        insertafter: ".*Unit.*"
+        line: "After=dbus.service"
+        firstmatch: yes
+        state: present
+
+    - name: Enable service httpd, and not touch the state
+      ansible.builtin.service:
+        name: multipathd
+        enabled: no
+
+    - name: lock root
+      user:
+        name: root
+        password_lock: true
+
+    - name: Remove auth_keys in root
+      file:
+        path: /root/.ssh/authorized_keys
+        state: absent
+
+    - name: Remove netplan file to remove static IP
+      file:
+        path: /etc/netplan/01-netcfg.yaml
+        state: absent
+
+    - name: SLURP MACHINE ID
+      shell: truncate -s 0 /etc/machine-id
+
+# Install zabbix-proxy and zabbix-agent with dependencies
+- hosts: all
+  collections:
+  - community.zabbix_agent
+  - community.zabbix_proxy
+  vars_files:
+    - vars/main.yml
+  roles:
+    - role: community.zabbix.zabbix_proxy
+    - role: community.zabbix.zabbix_agent
+
+# Install addons to zabbix proxy
+- hosts: all
+  tasks:
+
+    - name: check if python2 exists
+      stat:
+        path: /usr/bin/python2
+      register: python2
+      ignore_errors: True
+
+    - name: check if python3 exists
+      stat:
+        path: /usr/bin/python3
+      register: python3
+      ignore_errors: True
+
+    - name: copy zabbix scripts
+      copy:
+        dest: "/usr/lib/zabbix/externalscripts/{{ item }}"
+        owner: "zabbix"
+        group: "zabbix"
+        mode: 0755
+        src: "{{ item }}"
+      become: true
+      with_items:
+        - zext_ssl_cert.sh
+
+    - name: install bc
+      apt: pkg={{ item }} state=present update_cache=yes
+      become: true
+      with_items:
+        - bc
+
+    - name: Read packages
+      set_fact:
+        pip_pkgs: "{{ lookup('file', 'pip_packages').split('\n') }}"
+        pip3_pkgs: "{{ lookup('file', 'pip3_packages').split('\n') }}"
+
+    - name: Install python2 packages
+      pip:
+        name: "{{ item }}"
+        state: present
+        executable: pip
+      with_items: "{{ pip_pkgs }}"
+      when:
+        - item != ''
+        - python2.stat.exists == True
+
+    - name: Install python3 packages
+      pip:
+        name: "{{ item }}"
+        state: present
+        executable: pip3
+      with_items: "{{ pip3_pkgs }}"
+      when:
+        - item != ''
+        - python3.stat.exists == True
+
+# Remove acl package when done with installation of Zabbix
+- hosts: all
+  tasks:
+    - name: Remove acl when completed
+      apt:
+        name: acl
+        state: absent

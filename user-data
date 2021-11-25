@@ -1,0 +1,34 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US
+  keyboard:
+    layout: en
+    variant: us
+  network:
+    network:
+      version: 2
+      ethernets:
+        ens192:
+          link-local: [ipv6]
+          dhcp4: false
+          addresses:
+          - 10.1.4.70/24
+          gateway4: 10.1.4.1
+          nameservers:
+            addresses: [8.8.8.8]
+  storage:
+    layout:
+      name: lvm
+  identity:
+    hostname: ubuntu
+    username: ubuntu
+    password: $6$idontlikesalt$d/X7xKjZ59WwK44X5uEMDFdjaYuAhV4JOi4mESN0JgPXdfcy9hOc0gdPvNU.8hflSjZC2COxJ7oESf3XQg6K9/
+  ssh:
+    install-server: yes
+  user-data:
+    disable_root: false
+  early-commands:
+    - systemctl stop sshd.service
+  late-commands:
+    - echo 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /target/etc/sudoers.d/ubuntu

@@ -1,0 +1,82 @@
+{
+  "builders": [
+    {
+      "CPUs": 4,
+      "RAM": 4096,
+      "RAM_reserve_all": true,
+      "ip_wait_timeout": "15m",
+      "ip_settle_timeout": "5s",
+      "ip_wait_address": "10.127.25.0/24",
+      "boot_wait": "5s",
+      "boot_command": [
+        "<enter><enter><f6><esc><wait> ",
+        "autoinstall ds=nocloud",
+        "<enter><wait>"
+      ],
+      "boot_order": "disk,cdrom",
+      "cluster": "{{user `cluster`}}",
+      "convert_to_template": "true",
+      "datacenter": "{{user `datacenter`}}",
+      "datastore": "{{user `datastore`}}",
+      "disk_controller_type": "pvscsi",
+      "floppy_label": "cidata",
+      "floppy_files": [
+        "./user-data",
+        "./meta-data"
+      ],
+      "folder": "{{user `folder`}}",
+      "guest_os_type": "ubuntu64Guest",
+      "insecure_connection": "true",
+      "iso_paths": "[{{ user `datastore` }}] {{user `iso_path` }}",
+      "network_adapters": [
+        {
+          "network": "{{user `template_network`}}",
+          "network_card": "vmxnet3"
+        }
+      ],
+      "password": "{{user `password`}}",
+      "ssh_password": "ubuntu",
+      "ssh_username": "ubuntu",
+      "ssh_timeout": "20m",
+      "ssh_handshake_attempts": "200",
+      "storage": [
+        {
+          "disk_size": 40000,
+          "disk_thin_provisioned": true
+        }
+      ],
+      "type": "vsphere-iso",
+      "username": "{{user `vcenter_username`}}",
+      "vcenter_server": "{{user `vcenter_server`}}",
+      "vm_name": "{{user `template_name`}}"
+    }
+  ],
+  "provisioners": [
+    {
+      "playbook_file": "./playbooks/standard.yml",
+      "type": "ansible",
+      "command": "./run-ansible.sh",
+      "user": "ubuntu",
+      "extra_arguments": [ "-b" ]
+    },
+    {
+      "override": {
+        "vsphere-iso": {
+          "execute_command": "sudo bash {{.Path}}"
+        }
+      },
+      "script": "./scripts/cleanup.sh",
+      "type": "shell"
+    },
+    {
+      "override": {
+        "vsphere-iso": {
+          "execute_command": "sudo bash {{.Path}}"
+        }
+      },
+      "script": "./scripts/vault.sh",
+      "type": "shell"
+    }
+  ]
+}
+

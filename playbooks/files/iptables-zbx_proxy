@@ -1,0 +1,16 @@
+#!/bin/bash
+
+ADMIN="ens224"
+INTERNAL="ens192"
+
+iptables -P INPUT DROP # Default Policy DROP
+
+iptables -F # Flush iptables
+iptables -A INPUT -i lo -j ACCEPT # Accept traffic from lo
+iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -A INPUT -i ${ADMIN} -p tcp --dport 10050 -j ACCEPT # Allow Zabbix Agent traffic on ens224(ADMIN)
+iptables -A INPUT -p tcp --dport 10051 -j ACCEPT # Allow Zabbix Proxy traffic on all int
+iptables -A INPUT -i ${ADMIN} -p tcp --dport 22 -j ACCEPT # allow SSH on ens224(ADMIN)
+iptables -A INPUT -i ${ADMIN} -p icmp -j ACCEPT # allow ICMP on ens224(ADMIN)
+
+exit 0

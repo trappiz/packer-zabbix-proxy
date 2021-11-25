@@ -1,0 +1,44 @@
+# Created by https://www.gitignore.io/api/venv
+# Edit at https://www.gitignore.io/?templates=venv
+
+### venv ###
+# Virtualenv
+# http://iamzed.com/2009/05/07/a-primer-on-virtualenv/
+.Python
+pyvenv.cfg
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+pip-selfcheck.json
+
+# End of https://www.gitignore.io/api/venv
+
+# Created by https://www.gitignore.io/api/packer,ansible
+# Edit at https://www.gitignore.io/?templates=packer,ansible
+
+### Ansible ###
+*.retry
+
+### Packer ###
+# Cache objects
+packer_cache/
+
+# For built boxes
+*.box
+
+# End of https://www.gitignore.io/api/packer,ansible
+
+# Dont upload certificates
+*.pem
+*.key
+*.crt
+
+old/
+
+# Ignore secret credentials
+variables*.json
+env_*
